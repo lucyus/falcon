@@ -1,0 +1,38 @@
+{
+  "name": "@lucyus/falcon",
+  "version": "0.0.1",
+  "description": "Falcon is a lightweight HTTP client and server framework for Node.js",
+  "main": "lib/index.js",
+  "types": "lib/",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc -p ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucyus/falcon.git"
+  },
+  "keywords": [
+    "http",
+    "https",
+    "server",
+    "client",
+    "framework",
+    "tls",
+    "tcp",
+    "nodejs",
+    "typescript",
+    "javascript"
+  ],
+  "author": "Lucyus",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lucyus/falcon/issues"
+  },
+  "homepage": "https://github.com/lucyus/falcon#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "typescript": "^4.7.4"
+  }
+}
