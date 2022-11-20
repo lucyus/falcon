@@ -19,7 +19,7 @@ import { Router } from "../router";
 
     protected _options: ServerOptions;
     protected _server: TcpServer | TlsServer;
-    protected _socket: TcpSocket | null;
+    protected _clients: TcpSocket[];
 
     protected _router: Router;
 
@@ -36,7 +36,7 @@ import { Router } from "../router";
     }
 
     constructor(options?: ServerOptions) {
-        this._socket = null;
+        this._clients = [];
         this._router = new Router(options?.router);
         this._options = {
             host: options?.host,
@@ -89,17 +89,19 @@ import { Router } from "../router";
     }
 
     protected _attachListeners(socket: TcpSocket): void {
-        this._socket = socket;
-        this._socket.setEncoding(this._options.encoding?.server ?? "utf-8");
-        this._socket.setDefaultEncoding(this._options.encoding?.client ?? "utf-8");
-        if (this._options.timeout !== undefined) {
-            this._socket.setTimeout(this._options.timeout);
+        if (!this._clients.includes(socket)) {
+            this._clients.push(socket);
         }
-        this._socket.on("data", async (data: Buffer) => {
+        socket.setEncoding(this._options.encoding?.server ?? "utf-8");
+        socket.setDefaultEncoding(this._options.encoding?.client ?? "utf-8");
+        if (this._options.timeout !== undefined) {
+            socket.setTimeout(this._options.timeout);
+        }
+        socket.on("data", async (data: Buffer) => {
             try {
                 const request = new HTTPRequest(data.toString());
                 if (request.headers.get("Connection") !== "close") {
-                    this._socket?.setKeepAlive(true);
+                    socket.setKeepAlive(true);
                 }
                 const initialResponse = new HTTPResponse({
                     protocol: request.parsed.protocol,
@@ -114,7 +116,7 @@ import { Router } from "../router";
                     request,
                     initialResponse
                 );
-                this._send(finalResponse);
+                this._send(finalResponse, socket);
             }
             catch (error: any) {
                 const badRequestResponse = new HTTPResponse({
@@ -132,24 +134,27 @@ import { Router } from "../router";
                         }
                     }
                 });
-                this._send(badRequestResponse);
+                this._send(badRequestResponse, socket);
             }
         });
-        this._socket.on("close", (hadError: boolean) => { });
-        this._socket.on("error", (error: Error) => { });
-        this._socket.on("timeout", () => {
-            this._socket?.end(() => {
-                this._socket?.destroy();
+        socket.on("close", (hadError: boolean) => {
+            const clientIndex = this._clients.indexOf(socket);
+            if (clientIndex !== -1) {
+                this._clients.splice(clientIndex, 1);
+            }
+        });
+        socket.on("error", (error: Error) => { });
+        socket.on("timeout", () => {
+            socket.end(() => {
+                socket.destroy();
             });
         });
     }
 
-    protected _send(response: HTTPResponse): void {
-        if (this._socket !== null) {
-            const encoding: BufferEncoding = this._options.encoding?.server ?? "utf-8";
-            this._socket.write(response.toString(), encoding);
-            this._socket.pipe(this._socket);
-        }
+    protected _send(response: HTTPResponse, destination: TcpSocket): void {
+        const encoding: BufferEncoding = this._options.encoding?.server ?? "utf-8";
+        destination.write(response.toString(), encoding);
+        destination.pipe(destination);
     }
 
 }
