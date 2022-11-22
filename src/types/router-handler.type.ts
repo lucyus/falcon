@@ -5,4 +5,4 @@ export type RouterHandler = (
     request: HTTPRequest,
     reponse: HTTPResponse,
     routeData: RouteData
-) => HTTPResponse;
+) => HTTPResponse | Promise<HTTPResponse>;

@@ -81,6 +81,9 @@ import {
     HTTPHeaderValueSecFetchMode,
     HTTPHeaderValueSecFetchSite,
     HTTPHeaderValueSecFetchUser,
+    HTTPHeaderValueSecWebSocketAccept,
+    HTTPHeaderValueSecWebSocketKey,
+    HTTPHeaderValueSecWebSocketVersion,
     HTTPHeaderValueServer,
     HTTPHeaderValueServerTiming,
     HTTPHeaderValueServiceWorkerNavigationPreload,
@@ -211,6 +214,9 @@ export class HeaderManager {
     public get(headerName: 'SourceMap'): HTTPHeaderValueSourceMap | undefined;
     public get(headerName: 'Upgrade'): HTTPHeaderValueUpgrade | undefined;
     public get(headerName: 'X-DNS-Prefetch-Control'): HTTPHeaderValueXDNSPrefetchControl | undefined;
+    public get(headerName: 'Sec-WebSocket-Accept'): HTTPHeaderValueSecWebSocketAccept | undefined;
+    public get(headerName: 'Sec-WebSocket-Key'): HTTPHeaderValueSecWebSocketKey | undefined;
+    public get(headerName: 'Sec-WebSocket-Version'): HTTPHeaderValueSecWebSocketVersion | undefined;
     public get(headerName: string): any | undefined;
     public get(headerName: string): any | undefined {
         const headerNameBeautified = HTTP_HEADER_BEAUTIFIER[headerName.toLowerCase()] ||
@@ -332,6 +338,9 @@ export class HeaderManager {
     public set(headerName: 'SourceMap', headerValue?: HTTPHeaderValueSourceMap): void;
     public set(headerName: 'Upgrade', headerValue?: HTTPHeaderValueUpgrade): void;
     public set(headerName: 'X-DNS-Prefetch-Control', headerValue?: HTTPHeaderValueXDNSPrefetchControl): void;
+    public set(headerName: 'Sec-WebSocket-Accept', headerValue?: HTTPHeaderValueSecWebSocketAccept): void;
+    public set(headerName: 'Sec-WebSocket-Key', headerValue?: HTTPHeaderValueSecWebSocketKey): void;
+    public set(headerName: 'Sec-WebSocket-Version', headerValue?: HTTPHeaderValueSecWebSocketVersion): void;
     public set(headerName: string, headerValue?: any): void;
     public set(headerName: string, headerValue?: any) {
         if (headerValue === undefined) {
@@ -447,6 +456,9 @@ export class HeaderManager {
     public delete(headerName: 'SourceMap'): void;
     public delete(headerName: 'Upgrade'): void;
     public delete(headerName: 'X-DNS-Prefetch-Control'): void;
+    public delete(headerName: 'Sec-WebSocket-Accept'): void;
+    public delete(headerName: 'Sec-WebSocket-Key'): void;
+    public delete(headerName: 'Sec-WebSocket-Version'): void;
     public delete(headerName: string): void;
     public delete(headerName: string): void {
         const headerNameBeautified = HTTP_HEADER_BEAUTIFIER[headerName.toLowerCase()] ||
