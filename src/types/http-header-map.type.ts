@@ -79,6 +79,9 @@ import {
     HTTPHeaderValueSecFetchMode,
     HTTPHeaderValueSecFetchSite,
     HTTPHeaderValueSecFetchUser,
+    HTTPHeaderValueSecWebSocketAccept,
+    HTTPHeaderValueSecWebSocketKey,
+    HTTPHeaderValueSecWebSocketVersion,
     HTTPHeaderValueServer,
     HTTPHeaderValueServerTiming,
     HTTPHeaderValueServiceWorkerNavigationPreload,
@@ -198,5 +201,8 @@ export type HTTPHeaderMap = {
     "SourceMap"?: HTTPHeaderValueSourceMap,
     "Upgrade"?: HTTPHeaderValueUpgrade,
     "X-DNS-Prefetch-Control"?: HTTPHeaderValueXDNSPrefetchControl,
+    "Sec-WebSocket-Accept"?: HTTPHeaderValueSecWebSocketAccept,
+    "Sec-WebSocket-Key"?: HTTPHeaderValueSecWebSocketKey,
+    "Sec-WebSocket-Version"?: HTTPHeaderValueSecWebSocketVersion,
     [key: string]: any,
 };

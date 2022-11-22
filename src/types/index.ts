@@ -20,3 +20,7 @@ export * from './router-handler.type';
 export * from './router-option.type';
 export * from './server-options.type';
 export * from './token.type';
+export * from './websocket-error-handler.type';
+export * from './websocket-join-handler.type';
+export * from './websocket-manager-options.type';
+export * from './websocket-message-handler.type';

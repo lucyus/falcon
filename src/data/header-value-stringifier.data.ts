@@ -88,6 +88,9 @@ import {
     HTTPHeaderValueSecFetchMode,
     HTTPHeaderValueSecFetchSite,
     HTTPHeaderValueSecFetchUser,
+    HTTPHeaderValueSecWebSocketAccept,
+    HTTPHeaderValueSecWebSocketKey,
+    HTTPHeaderValueSecWebSocketVersion,
     HTTPHeaderValueServer,
     HTTPHeaderValueServerTiming,
     HTTPHeaderValueServiceWorkerNavigationPreload,
@@ -1012,4 +1015,13 @@ export const HEADER_VALUE_STRINGIFIER_DATA: Record<
     "X-DNS-Prefetch-Control": (headerValue: HTTPHeaderValueXDNSPrefetchControl) => {
         return headerValue ? "on" : "off";
     },
+    "Sec-WebSocket-Accept": (headerValue: HTTPHeaderValueSecWebSocketAccept) => {
+        return headerValue;
+    },
+    "Sec-WebSocket-Key": (headerValue: HTTPHeaderValueSecWebSocketKey) => {
+        return headerValue;
+    },
+    "Sec-WebSocket-Version": (headerValue: HTTPHeaderValueSecWebSocketVersion) => {
+        return `${headerValue}`;
+    }
 };

@@ -98,5 +98,8 @@ export const HTTP_HEADERS: HTTPHeader[] = [
     "Server-Timing",
     "SourceMap",
     "Upgrade",
-    "X-DNS-Prefetch-Control"
+    "X-DNS-Prefetch-Control",
+    "Sec-WebSocket-Accept",
+    "Sec-WebSocket-Key",
+    "Sec-WebSocket-Version",
 ];

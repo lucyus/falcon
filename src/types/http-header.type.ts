@@ -96,5 +96,8 @@ export type HTTPHeader =
     "Server-Timing" |
     "SourceMap" |
     "Upgrade" |
-    "X-DNS-Prefetch-Control"
+    "X-DNS-Prefetch-Control" |
+    "Sec-WebSocket-Key" |
+    "Sec-WebSocket-Version" |
+    "Sec-WebSocket-Accept"
 ;

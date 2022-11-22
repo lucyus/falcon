@@ -96,5 +96,8 @@ export const HTTP_HEADER_BEAUTIFIER: { [key: string]: string } = {
     "server-timing": "Server-Timing",
     "sourcemap": "SourceMap",
     "upgrade": "Upgrade",
-    "x-dns-prefetch-control": "X-DNS-Prefetch-Control"
+    "x-dns-prefetch-control": "X-DNS-Prefetch-Control",
+    "sec-websocket-accept": "Sec-WebSocket-Accept",
+    "sec-websocket-key": "Sec-WebSocket-Key",
+    "sec-websocket-version": "Sec-WebSocket-Version",
 };
