@@ -656,7 +656,10 @@ export class HTTPParser {
                 nextTokenLine :
                 nextTokenLine + 1
             ;
-            const rawOffset: number = nextToken.index.end - nextToken.index.start + 1;
+            const rawOffset: number = nextToken !== undefined ?
+                nextToken.index.end - nextToken.index.start + 1 :
+                0
+            ;
             nextTokenColumn = parseToken.superType !== ParseTokenSuperType.END_OF_LINE ?
                 nextTokenColumn + rawOffset :
                 1
