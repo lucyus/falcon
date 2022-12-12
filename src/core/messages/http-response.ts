@@ -53,7 +53,7 @@ export class HTTPResponse extends HTTPMessage {
             "identity"
         ]);
         this.headers.set("Content-Length", this.body.toString().length);
-        this.headers.set("Server", "Lucyus (HTTP Server)");
+        this.headers.set("Server", "Falcon (Lucyus)");
         this.headers.set("Date", new Date());
     }
 
