@@ -9,23 +9,22 @@ import {
     TLSSocket as TlsSocket
 } from "tls";
 import { readFileSync } from "fs";
-import { createHash } from "crypto";
 
-import { RequestHandler, ServerOptions } from "../../types";
+import { ServerOptions } from "../../types";
 import { HTTPRequest, HTTPResponse } from "../messages";
-import { HTTP_HEADER_BEAUTIFIER, HTTP_STATUS_NAME } from "../../data";
+import { HTTP_STATUS_NAME } from "../../data";
 import { Router } from "../router";
-import { WebSocketManager, WebSocketMessenger } from "../utilities";
-import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
+import { WebSocketMessenger } from "../utilities";
+import { WebSocketRouter } from "../websocket";
 
  export class Server {
 
     protected _options: ServerOptions;
     protected _server: TcpServer | TlsServer;
     protected _clients: TcpSocket[];
-    protected _webSocketManager: WebSocketManager;
 
     protected _router: Router;
+    protected _webSocketRouter: WebSocketRouter;
 
     public set port(port: number) {
         this._options.port = port;
@@ -39,18 +38,14 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
         return this._router;
     }
 
-    public get webSocketManager(): WebSocketManager {
-        return this._webSocketManager;
+    public get webSocketRouter(): WebSocketRouter {
+        return this._webSocketRouter;
     }
 
     constructor(options?: ServerOptions) {
         this._clients = [];
-        this._webSocketManager = new WebSocketManager({
-            errorHandler: options?.webSocket?.errorHandler,
-            joinHandler: options?.webSocket?.joinHandler,
-            messageHandler: options?.webSocket?.messageHandler,
-        });
         this._router = new Router(options?.router);
+        this._webSocketRouter = new WebSocketRouter(options?.webSocketRouter);
         this._options = {
             host: options?.host,
             port: options?.port,
@@ -131,31 +126,19 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
                 ;
                 const websocketKey = request.headers.get("Sec-WebSocket-Key");
                 if (
-                    this.webSocketManager.isHandlingHandshakes &&
                     websocketUpgrade !== undefined &&
                     websocketKey !== undefined
                 ) {
-                    const finalResponse = initialResponse;
-                    finalResponse.headers.set("Upgrade", [
-                        {
-                            protocol: {
-                                name: "websocket"
-                            }
-                        }
-                    ]);
-                    finalResponse.headers.set("Connection", ["Upgrade"]);
-                    finalResponse.headers.set(
-                        "Sec-WebSocket-Accept",
-                        createHash("sha1")
-                            .update(websocketKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-                            .digest("base64")
+                    const finalResponse = await this._webSocketRouter.handleHandshakeRequest(
+                        request,
+                        initialResponse,
+                        { client: socket, webSocketKey: websocketKey }
                     );
-                    finalResponse.status = {
-                        code: 101,
-                        name: HTTP_STATUS_NAME[101]
-                    };
-                    this.webSocketManager.register(socket);
-                    this._send(finalResponse, socket);
+                    this._send(finalResponse, socket)
+                        .then(async () => {
+                            await this._webSocketRouter.handleHandshakeEstablished(socket);
+                        })
+                    ;
                 }
                 else {
                     const finalResponse = await this._router.handle(
@@ -170,9 +153,8 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
                     const requestMessage = WebSocketMessenger.decode(
                         Buffer.from(data.toString("binary"), "binary")
                     );
-                    const responseMessage = await this.webSocketManager.messageHandler(
+                    const responseMessage = await this.webSocketRouter.handleMessage(
                         requestMessage,
-                        this.webSocketManager,
                         socket
                     );
                     if (responseMessage !== undefined) {
@@ -183,17 +165,18 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
                 }
                 catch (websocketParsingError: any) {
                     if (websocketParsingError.name === "WebSocketEndError") {
-                        if (this.webSocketManager.isWebSocketClient(socket)) {
-                            if (this.webSocketManager.isWebSocketClientClosing(socket)) {
-                                this.webSocketManager.unregister(socket);
+                        const webSocketRoute = this.webSocketRouter.getRouteByClient(socket);
+                        if (webSocketRoute !== undefined) {
+                            if (webSocketRoute.webSocketRouteManager.isWebSocketClientClosing(socket)) {
+                                webSocketRoute.webSocketRouteManager.unregister(socket);
                                 socket.end(() => {
                                     socket.destroy();
                                 });
                             }
                             else {
-                                this.webSocketManager.close(socket)
+                                webSocketRoute.webSocketRouteManager.close(socket)
                                 .then(() => {
-                                    this.webSocketManager.unregister(socket);
+                                    webSocketRoute.webSocketRouteManager.unregister(socket);
                                 })
                                 .catch(() => { })
                                 .finally(() => {
@@ -211,9 +194,8 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
                         return;
                     }
                     if (websocketParsingError.name === "WebSocketPayloadOverflowError") {
-                        const responseMessage = await this.webSocketManager.errorHandler(
+                        const responseMessage = await this.webSocketRouter.handleError(
                             websocketParsingError,
-                            this.webSocketManager,
                             socket
                         );
                         if (responseMessage !== undefined) {
@@ -246,14 +228,18 @@ import { WebSocketEndError, WebSocketPayloadOverflowError } from "../../errors";
             if (clientIndex !== -1) {
                 this._clients.splice(clientIndex, 1);
             }
-            this.webSocketManager.unregister(socket);
+            const webSocketRoute = this.webSocketRouter.getRouteByClient(socket);
+            if (webSocketRoute !== undefined) {
+                webSocketRoute.webSocketRouteManager.unregister(socket);
+            }
         });
         socket.on("error", (error: Error) => { });
         socket.on("timeout", () => {
-            if (this.webSocketManager.isWebSocketClient(socket)) {
-                this.webSocketManager.close(socket);
+            const webSocketRoute = this.webSocketRouter.getRouteByClient(socket);
+            if (webSocketRoute !== undefined) {
+                webSocketRoute.webSocketRouteManager.close(socket);
                 setTimeout(() => {
-                    if (this.webSocketManager.isWebSocketClient(socket)) {
+                    if (webSocketRoute.webSocketRouteManager.isWebSocketClient(socket)) {
                         socket.end(() => {
                             socket.destroy();
                         });

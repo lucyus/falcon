@@ -467,7 +467,11 @@ export const HEADER_VALUE_PARSER_DATA: Record<
     "Keep-Alive": (headerValue: string) => {
         const parameters = HeaderKeyValueParametersFormatter.format(headerValue);
         return {
-            timeout: Number(parameters["timeout"]) || 0,
+            timeout: parameters["timeout"] !== undefined ?
+                Number(parameters["timeout"])
+                :
+                undefined
+            ,
             maximumRequestCount: parameters["max"] !== undefined ?
                 Number(parameters["max"])
                 :

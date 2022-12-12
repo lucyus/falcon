@@ -1,8 +1,8 @@
 import { WebSocketRouteManager } from "../core";
 import { WebSocketClientData } from ".";
 
-export type WebSocketJoinHandler = (
+export type WebSocketLeaveHandler = (
         webSocketRouteManager: WebSocketRouteManager,
         webSocketClientData: WebSocketClientData
-    ) => (string | void) | Promise<string | void>
+    ) => void | Promise<void>
 ;

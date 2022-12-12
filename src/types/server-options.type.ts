@@ -1,8 +1,6 @@
 import {
     RouterOptions,
-    WebSocketErrorHandler,
-    WebSocketJoinHandler,
-    WebSocketMessageHandler
+    WebSocketRouterOptions
 } from ".";
 
 export type ServerOptions = {
@@ -22,9 +20,5 @@ export type ServerOptions = {
         }
     },
     router?: RouterOptions;
-    webSocket?: {
-        errorHandler?: WebSocketErrorHandler;
-        joinHandler?: WebSocketJoinHandler;
-        messageHandler?: WebSocketMessageHandler;
-    }
+    webSocketRouter?: WebSocketRouterOptions;
 };

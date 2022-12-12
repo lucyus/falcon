@@ -27,10 +27,15 @@ export class HTTPResponse extends HTTPMessage {
         this.headers.set("Connection", [
             "Keep-Alive"
         ]);
-        this.headers.set("Keep-Alive", {
-            timeout: options?.socket?.timeout ?? 10 * 1000,
-            maximumRequestCount: options?.socket?.maximumRequestCount
-        });
+        if (
+            options?.socket?.timeout !== undefined ||
+            options?.socket?.maximumRequestCount !== undefined
+        ) {
+            this.headers.set("Keep-Alive", {
+                timeout: options?.socket?.timeout,
+                maximumRequestCount: options?.socket?.maximumRequestCount
+            });
+        }
         this.headers.set("Access-Control-Allow-Origin", "*");
         this.headers.set("Access-Control-Allow-Headers", [
             "*"
