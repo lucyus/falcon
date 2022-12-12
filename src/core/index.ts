@@ -4,3 +4,4 @@ export * from './router';
 export * from './server';
 export * from './tokenizer';
 export * from './validators';
+export * from './websocket';

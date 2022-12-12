@@ -19,6 +19,7 @@ OR
 * HTTP
 * HTTPS
 * WebSocket
+* WebSocket Secure
 
 ## Usage
 
@@ -147,16 +148,31 @@ const httpServer = new Server({
             }
         ]
     },
-    webSocket: {
-        joinHandler: (webSocketManager, client) => {
-            return `Hello, ${client.remoteAddress}:${client.remotePort}!`;
-        },
-        messageHandler: (message, webSocketManager, client) => {
-            return `The server successfully received "${message}" from ${client.remoteAddress}:${client.remotePort}!`;
-        },
-        errorHandler: (error, webSocketManager, client) => {
-            return `Oops, something went wrong with ${client.remoteAddress}:${client.remotePort}! :(`;
-        }
+    webSocketRouter: {
+        routes: [
+            {
+                path: "/",
+                shouldHandshake: (request, response, routeData) => {
+                    return {
+                        acceptContext: "You can pass any contextual data in any type about the client to the handlers here!"
+                    };
+                },
+                handlers: {
+                    onJoin: (webSocketManager, clientData) => {
+                        return `Hello, ${clientData.client.remoteAddress}:${clientData.client.remotePort}!`;
+                    },
+                    onMessage: (message, webSocketManager, clientData) => {
+                        return `Got it, ${clientData.client.remoteAddress}:${clientData.client.remotePort}!`;
+                    },
+                    onError: (error, webSocketManager, clientData) => {
+                        return `Something went wrong, ${clientData.client.remoteAddress}:${clientData.client.remotePort}!`;
+                    },
+                    onLeave: (webSocketManager, clientData) => {
+                        console.log(`Goodbye, ${clientData.client.remoteAddress}:${clientData.client.remotePort}!`);
+                    }
+                }
+            }
+        ]
     }
     /* ... see ServerOptions for more ... */
 });

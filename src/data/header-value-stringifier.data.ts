@@ -385,10 +385,14 @@ export const HEADER_VALUE_STRINGIFIER_DATA: Record<
         return stringifiedConnection;
     },
     "Keep-Alive": (headerValue: HTTPHeaderValueKeepAlive) => {
-        return `timeout=${headerValue.timeout}${
+        return `${
+            headerValue.timeout !== undefined ?
+                `timeout=${headerValue.timeout}` :
+                ""
+        }${
             headerValue.maximumRequestCount !== undefined ?
-            `, max=${headerValue.maximumRequestCount}` :
-            ""
+                `${headerValue.timeout !== undefined ? ", " : ""}max=${headerValue.maximumRequestCount}` :
+                ""
         }`;
     },
     "Accept": (headerValue: HTTPHeaderValueAccept) => {

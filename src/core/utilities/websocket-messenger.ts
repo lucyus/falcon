@@ -68,7 +68,7 @@ export class WebSocketMessenger {
     }
 
     public static encodeClose(): Buffer {
-        return Buffer.from([0b10001000, 0b00000000]);
+        return Buffer.from([0b10001000, 0b00000010, 0x03, 0xe8]);
     }
 
 }
