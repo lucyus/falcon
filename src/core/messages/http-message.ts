@@ -28,11 +28,15 @@ export abstract class HTTPMessage {
         return this._bodyManager;
     }
 
-    constructor(messageOrOptions?: string | HTTPMessageOptions) {
-        if (typeof messageOrOptions === "string") {
-            const message = messageOrOptions;
+    constructor(
+        messageOrOptions?: Buffer | HTTPMessageOptions,
+        encoding: BufferEncoding = "utf8"
+    ) {
+        if (messageOrOptions instanceof Buffer) {
+            const rawMessage = messageOrOptions;
+            const message = messageOrOptions.toString(encoding);
             const tokens = HTTPTokenizer.tokenize(message);
-            this._parsed = HTTPParser.parseToObject(tokens);
+            this._parsed = HTTPParser.parseToObject(tokens, rawMessage);
             this._headerManager = new HeaderManager(this._parsed.headers);
             this._bodyManager = new BodyManager(this._parsed.body);
         }
@@ -47,12 +51,14 @@ export abstract class HTTPMessage {
                     }
                 },
                 headers: [],
-                body: ""
+                body: Buffer.from("")
             };
             this._headerManager = new HeaderManager();
             this._bodyManager = new BodyManager();
         }
     }
+
+    public abstract toBuffer(): Buffer;
 
     public abstract toString(): string;
 

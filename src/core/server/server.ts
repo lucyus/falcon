@@ -104,10 +104,11 @@ import { WebSocketRouter } from "../websocket";
         if (this._options.timeout !== undefined) {
             socket.setTimeout(this._options.timeout);
         }
-        socket.on("data", async (data: Buffer | string) => {
+        socket.on("data", async (data: Buffer) => {
             try {
                 const request = new HTTPRequest(
-                    data.toString(this._options.encoding?.server ?? "utf-8")
+                    data,
+                    this._options.encoding?.server
                 );
                 if (request.headers.get("Connection") !== "close") {
                     socket.setKeepAlive(true);
@@ -263,7 +264,7 @@ import { WebSocketRouter } from "../websocket";
         return new Promise<void>((resolve, reject) => {
             const encoding: BufferEncoding = this._options.encoding?.client ?? "utf-8";
             destination.write(
-                response.toString(),
+                response.toBuffer(),
                 encoding,
                 (error?: Error) => {
                     if (error !== undefined) {

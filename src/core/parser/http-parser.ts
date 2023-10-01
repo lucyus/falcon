@@ -45,12 +45,11 @@ export class HTTPParser {
         return parseTokens;
     }
 
-    public static parseToObject(tokens: Token[]): HTTPRequestData | HTTPResponseData {
+    public static parseToObject(
+        tokens: Token[],
+        rawMessage: Buffer
+    ): HTTPRequestData | HTTPResponseData {
         const parseTokens = HTTPParser.parse(tokens);
-        let raw: string = "";
-        for (const parseToken of parseTokens) {
-            raw += parseToken.value
-        }
         const headers: { name: string, value: any }[] = [];
         const headerNameIndexes: number[] = [];
         for (let index = 10; index < parseTokens.length; ++index) {
@@ -65,23 +64,12 @@ export class HTTPParser {
                 value: parseTokens[headerNameIndex + 2].value.trim()
             });
         }
-        let body: string = "";
-        const bodyStartIndex: number = parseTokens
-            .findIndex(
-                (parseToken: ParseToken) => parseToken.type === ParseTokenType.BODY_DATA
-            )
+        const rawBodyStartIndex: number = rawMessage.indexOf("\r\n\r\n") + 4;
+        const rawBodyEndIndex: number = rawMessage.indexOf("\r\n\r\n") !== rawMessage.lastIndexOf("\r\n\r\n") ?
+            rawMessage.lastIndexOf("\r\n\r\n") :
+            rawMessage.length
         ;
-        for (
-            let index = bodyStartIndex;
-            (
-                index < parseTokens.length &&
-                parseTokens[index] &&
-                parseTokens[index].type !== ParseTokenType.BODY_END_OF_BODY
-            );
-            ++index
-        ) {
-            body += parseTokens[index].value;
-        }
+        const body = Buffer.from(rawMessage.subarray(rawBodyStartIndex, rawBodyEndIndex));
         if (parseTokens[0].type === ParseTokenType.START_LINE_REQUEST_HTTP_METHOD) {
             return {
                 protocol: {

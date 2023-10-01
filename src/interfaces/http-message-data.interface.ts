@@ -7,5 +7,5 @@ export interface HTTPMessageData {
         }
     },
     headers: { name: string, value: string }[],
-    body: string
+    body: Buffer
 }

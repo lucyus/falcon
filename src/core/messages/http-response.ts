@@ -13,10 +13,13 @@ export class HTTPResponse extends HTTPMessage {
         this._parsed.status = status;
     }
 
-    constructor(messageOrOptions?: string | HTTPMessageOptions) {
-        super(messageOrOptions);
+    constructor(
+        messageOrOptions?: Buffer | HTTPMessageOptions,
+        encoding: BufferEncoding = "utf8"
+    ) {
+        super(messageOrOptions, encoding);
         this._type = HTTPMessageType.RESPONSE;
-        if (typeof messageOrOptions === "string") {
+        if (messageOrOptions instanceof Buffer) {
             return;
         }
         const options = messageOrOptions;
@@ -55,6 +58,63 @@ export class HTTPResponse extends HTTPMessage {
         this.headers.set("Content-Length", this.body.toString().length);
         this.headers.set("Server", "Falcon (Lucyus)");
         this.headers.set("Date", new Date());
+    }
+
+    public toBuffer(): Buffer {
+        let result = Buffer.from("");
+        result = Buffer.concat([
+            result,
+            Buffer.from(`${this._parsed.protocol.name}/`),
+            Buffer.from(`${this._parsed.protocol.version.major}.`),
+            Buffer.from(`${this._parsed.protocol.version.minor} `),
+            Buffer.from(`${this._parsed.status.code} `),
+            Buffer.from(`${this._parsed.status.name}\r\n`)
+        ]);
+        this.headers.set("Content-Length", this.body.length);
+        if (this.headers.get("Date") !== undefined) {
+            this.headers.set("Date", new Date());
+        }
+        const simpleHeaders = this.headers.getAllStringified();
+        const trailers = this.headers.get("Trailer");
+        const trailerHeaders: Record<string, string> = {};
+        if (trailers !== undefined) {
+            for (const trailer of trailers) {
+                if (simpleHeaders[trailer]) {
+                    trailerHeaders[trailer] = simpleHeaders[trailer];
+                    delete simpleHeaders[trailer];
+                }
+            }
+        }
+        for (const header in simpleHeaders) {
+            result = Buffer.concat([
+                result,
+                Buffer.from(`${header}: ${simpleHeaders[header]}\r\n`)
+            ]);
+        }
+        result = Buffer.concat([
+            result,
+            Buffer.from("\r\n")
+        ]);
+        if (this.body.length > 0) {
+            result = Buffer.concat([
+                result,
+                this.body.content,
+                Buffer.from("\r\n")
+            ]);
+        }
+        for (const header in trailerHeaders) {
+            result = Buffer.concat([
+                result,
+                Buffer.from(`${header}: ${trailerHeaders[header]}\r\n`)
+            ]);
+        }
+        if (Object.keys(trailerHeaders).length > 0) {
+            result = Buffer.concat([
+                result,
+                Buffer.from("\r\n")
+            ]);
+        }
+        return result;
     }
 
     public toString(): string {
