@@ -1,3 +1,6 @@
+import { Socket as TcpSocket } from "net";
+
+import { HTTPResponse } from "../core";
 import {
     RouterOptions,
     WebSocketRouterOptions
@@ -21,4 +24,9 @@ export type ServerOptions = {
     },
     router?: RouterOptions;
     webSocketRouter?: WebSocketRouterOptions;
+    onError?: (
+        error: Error,
+        response: HTTPResponse,
+        socket: TcpSocket
+    ) => HTTPResponse | Promise<HTTPResponse>;
 };

@@ -50,7 +50,8 @@ import { WebSocketRouter } from "../websocket";
             host: options?.host,
             port: options?.port,
             timeout: options?.timeout,
-            openSsl: options?.openSsl
+            openSsl: options?.openSsl,
+            onError: options?.onError
         };
         if (this._options.openSsl !== undefined) {
             this._server = createTlsServer({
@@ -205,7 +206,7 @@ import { WebSocketRouter } from "../websocket";
                         return;
                     }
                 }
-                const badRequestResponse = new HTTPResponse({
+                const internalServerErrorResponse = new HTTPResponse({
                     protocol: {
                         name: "HTTP",
                         version: {
@@ -215,12 +216,16 @@ import { WebSocketRouter } from "../websocket";
                     },
                     response: {
                         status: {
-                            code: 400,
-                            name: HTTP_STATUS_NAME[400]
+                            code: 500,
+                            name: HTTP_STATUS_NAME[500]
                         }
                     }
                 });
-                this._send(badRequestResponse, socket);
+                await this._unexpectedErrorHandler(
+                    httpParsingError,
+                    internalServerErrorResponse,
+                    socket
+                );
             }
         });
         socket.on("close", (hadError: boolean) => {
@@ -283,6 +288,31 @@ import { WebSocketRouter } from "../websocket";
                 }
             });
         });
+    }
+
+    protected async _unexpectedErrorHandler(
+        error: Error,
+        response: HTTPResponse,
+        socket: TcpSocket
+    ) {
+        if (this._options.onError) {
+            let errorResponseToSend: HTTPResponse = response;
+            try {
+                errorResponseToSend = await this._options.onError(error, response, socket);
+                if (!(errorResponseToSend instanceof HTTPResponse)) {
+                    errorResponseToSend = response;
+                }
+            }
+            catch (subError) {
+                console.error(error);
+                console.error(subError);
+            }
+            await this._send(errorResponseToSend, socket);
+        }
+        else {
+            console.error(error);
+            await this._send(response, socket);
+        }
     }
 
 }
