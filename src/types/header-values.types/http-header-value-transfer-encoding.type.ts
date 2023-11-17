@@ -1,3 +1,3 @@
 import { ContentEncoder } from "../content-encoder.type";
 
-export type HTTPHeaderValueTransferEncoding = ContentEncoder[];
+export type HTTPHeaderValueTransferEncoding = (ContentEncoder | 'trailers' | 'chunked')[];

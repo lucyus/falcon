@@ -1167,7 +1167,7 @@ export const HEADER_VALUE_PARSER_DATA: Record<
         const encodings: HTTPHeaderValueTransferEncoding = [];
         const headerValueSplitted: string[] = headerValue.split(",");
         for (const rawEncoding of headerValueSplitted) {
-            encodings.push(rawEncoding.trim().toLowerCase() as ContentEncoder);
+            encodings.push(rawEncoding.trim().toLowerCase() as (ContentEncoder | 'trailers' | 'chunked'));
         }
         return encodings as HTTPHeaderValueTransferEncoding;
     },
