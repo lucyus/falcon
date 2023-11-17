@@ -55,7 +55,6 @@ export class HTTPResponse extends HTTPMessage {
         this.headers.set("Content-Encoding", [
             "identity"
         ]);
-        this.headers.set("Content-Length", this.body.toString().length);
         this.headers.set("Server", "Falcon (Lucyus)");
         this.headers.set("Date", new Date());
     }
@@ -70,8 +69,10 @@ export class HTTPResponse extends HTTPMessage {
             Buffer.from(`${this._parsed.status.code} `),
             Buffer.from(`${this._parsed.status.name}\r\n`)
         ]);
-        this.headers.set("Content-Length", this.body.length);
-        if (this.headers.get("Date") !== undefined) {
+        if (!this.headers.has("Content-Length")) {
+            this.headers.set("Content-Length", this.body.length);
+        }
+        if (this.headers.has("Date")) {
             this.headers.set("Date", new Date());
         }
         const simpleHeaders = this.headers.getAllStringified();
@@ -124,8 +125,10 @@ export class HTTPResponse extends HTTPMessage {
         result += `${this._parsed.status.code} `;
         result += `${this._parsed.status.name}\r\n`;
         const body = this.body.toString();
-        this.headers.set("Content-Length", body.length);
-        if (this.headers.get("Date") !== undefined) {
+        if (!this.headers.has("Content-Length")) {
+            this.headers.set("Content-Length", body.length);
+        }
+        if (this.headers.has("Date")) {
             this.headers.set("Date", new Date());
         }
         const simpleHeaders = this.headers.getAllStringified();

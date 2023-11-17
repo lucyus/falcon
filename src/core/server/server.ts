@@ -14,14 +14,15 @@ import { ServerOptions } from "../../types";
 import { HTTPRequest, HTTPResponse } from "../messages";
 import { HTTP_STATUS_NAME } from "../../data";
 import { Router } from "../router";
-import { WebSocketMessenger } from "../utilities";
+import { ClientManager, WebSocketMessenger } from "../utilities";
 import { WebSocketRouter } from "../websocket";
+import { ServerMaximumRequestLengthExceededError } from "../../errors";
 
  export class Server {
 
-    protected _options: ServerOptions;
+    protected _options: ServerOptions & { maxRequestLength: number };
     protected _server: TcpServer | TlsServer;
-    protected _clients: TcpSocket[];
+    protected _clientManager: ClientManager;
 
     protected _router: Router;
     protected _webSocketRouter: WebSocketRouter;
@@ -43,15 +44,17 @@ import { WebSocketRouter } from "../websocket";
     }
 
     constructor(options?: ServerOptions) {
-        this._clients = [];
+        this._clientManager = new ClientManager();
         this._router = new Router(options?.router);
         this._webSocketRouter = new WebSocketRouter(options?.webSocketRouter);
         this._options = {
             host: options?.host,
             port: options?.port,
             timeout: options?.timeout,
+            encoding: options?.encoding,
             openSsl: options?.openSsl,
-            onError: options?.onError
+            onError: options?.onError,
+            maxRequestLength: options?.maxRequestLength || (1024 * 1024 * 10),
         };
         if (this._options.openSsl !== undefined) {
             this._server = createTlsServer({
@@ -98,18 +101,68 @@ import { WebSocketRouter } from "../websocket";
     }
 
     protected _attachListeners(socket: TcpSocket): void {
-        if (!this._clients.includes(socket)) {
-            this._clients.push(socket);
+        if (!this._clientManager.has(socket)) {
+            this._clientManager.register(socket);
         }
         if (this._options.timeout !== undefined) {
             socket.setTimeout(this._options.timeout);
         }
         socket.on("data", async (data: Buffer) => {
             try {
+                const clientRequestChunksStorage = this._clientManager.get(socket)
+                    ||
+                    this._clientManager.register(socket)
+                ;
+                clientRequestChunksStorage.push(data);
                 const request = new HTTPRequest(
-                    data,
+                    Buffer.concat(clientRequestChunksStorage.chunks),
                     this._options.encoding?.server
                 );
+                if (request.length > this._options.maxRequestLength) {
+                    clientRequestChunksStorage.clear();
+                    const requestEntityTooLargeResponse = new HTTPResponse({
+                        protocol: request.parsed.protocol,
+                        response: {
+                            status: {
+                                code: 413,
+                                name: HTTP_STATUS_NAME[413]
+                            }
+                        }
+                    });
+                    await this._unexpectedErrorHandler(
+                        new ServerMaximumRequestLengthExceededError(),
+                        requestEntityTooLargeResponse,
+                        socket
+                    );
+                    return;
+                }
+                if (!clientRequestChunksStorage.policy) {
+                    if (request.headers.has("Content-Length")) {
+                        clientRequestChunksStorage.policy = "Content-Length";
+                    }
+                    else if (
+                        request.headers.has("Transfer-Encoding") &&
+                        request.headers.get("Transfer-Encoding")?.includes("chunked")
+                    ) {
+                        clientRequestChunksStorage.policy = "Transfer-Encoding";
+                    }
+                }
+                if (clientRequestChunksStorage.policy === "Content-Length") {
+                    const expectedBodyLength = request.headers.get("Content-Length") || 0;
+                    const actualBodyLength = request.body.length;
+                    if (actualBodyLength < expectedBodyLength) {
+                        return;
+                    }
+                }
+                else if (clientRequestChunksStorage.policy === "Transfer-Encoding") {
+                    const transferEncodings = request.headers.get("Transfer-Encoding") || [];
+                    if (transferEncodings.includes("chunked")) {
+                        if (!request.body.toString().startsWith("0\r\n\r\n")) {
+                            return;
+                        }
+                    }
+                }
+                clientRequestChunksStorage.clear();
                 if (request.headers.get("Connection") !== "close") {
                     socket.setKeepAlive(true);
                 }
@@ -151,6 +204,10 @@ import { WebSocketRouter } from "../websocket";
                 }
             }
             catch (httpParsingError: any) {
+                const clientRequestChunksStorage = this._clientManager.get(socket);
+                if (clientRequestChunksStorage) {
+                    clientRequestChunksStorage.clear();
+                }
                 try {
                     const requestMessage = WebSocketMessenger.decode(
                         Buffer.from(data.toString("binary"), "binary")
@@ -230,10 +287,7 @@ import { WebSocketRouter } from "../websocket";
             }
         });
         socket.on("close", (hadError: boolean) => {
-            const clientIndex = this._clients.indexOf(socket);
-            if (clientIndex !== -1) {
-                this._clients.splice(clientIndex, 1);
-            }
+            this._clientManager.unregister(socket);
             const webSocketRoute = this.webSocketRouter.getRouteByClient(socket);
             if (webSocketRoute !== undefined) {
                 webSocketRoute.webSocketRouteManager.unregister(socket);

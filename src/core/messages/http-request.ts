@@ -51,7 +51,6 @@ export class HTTPRequest extends HTTPMessage {
         this.headers.set("Content-Encoding", [
             "identity"
         ]);
-        this.headers.set("Content-Length", this.body.toString().length);
         this.headers.set("User-Agent", {
             product: {
                 name: "Lucyus",
@@ -72,8 +71,10 @@ export class HTTPRequest extends HTTPMessage {
             Buffer.from(`${this._parsed.protocol.version.major}.`),
             Buffer.from(`${this._parsed.protocol.version.minor}\r\n`)
         ]);
-        this.headers.set("Content-Length", this.body.length);
-        if (this.headers.get("Date") !== undefined) {
+        if (!this.headers.has("Content-Length")) {
+            this.headers.set("Content-Length", this.body.length);
+        }
+        if (this.headers.has("Date")) {
             this.headers.set("Date", new Date());
         }
         const simpleHeaders = this.headers.getAllStringified();
@@ -126,8 +127,10 @@ export class HTTPRequest extends HTTPMessage {
         result += `${this._parsed.protocol.version.major}.`;
         result += `${this._parsed.protocol.version.minor}\r\n`;
         const body = this.body.toString();
-        this.headers.set("Content-Length", body.length);
-        if (this.headers.get("Date") !== undefined) {
+        if (!this.headers.has("Content-Length")) {
+            this.headers.set("Content-Length", body.length);
+        }
+        if (this.headers.has("Date")) {
             this.headers.set("Date", new Date());
         }
         const simpleHeaders = this.headers.getAllStringified();

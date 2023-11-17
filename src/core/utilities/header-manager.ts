@@ -1,5 +1,6 @@
 import { HTTP_HEADER_BEAUTIFIER } from "../../data";
 import {
+    HTTPHeader,
     HTTPHeaderMap,
     HTTPHeaderValueAccept,
     HTTPHeaderValueAcceptCH,
@@ -114,6 +115,10 @@ export class HeaderManager {
         if (headers) {
             this._initialize(headers);
         }
+    }
+
+    public has(headerName: HTTPHeader | string): boolean {
+        return this.get(headerName) !== undefined;
     }
 
     public get(headerName: 'WWW-Authenticate'): HTTPHeaderValueWWWAuthenticate | undefined;

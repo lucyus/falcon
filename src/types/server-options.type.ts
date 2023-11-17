@@ -29,4 +29,5 @@ export type ServerOptions = {
         response: HTTPResponse,
         socket: TcpSocket
     ) => HTTPResponse | Promise<HTTPResponse>;
+    maxRequestLength?: number;
 };

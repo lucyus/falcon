@@ -1,6 +1,7 @@
 export * from './alpn.type';
 export * from './cache-expiration-policy-name.type';
 export * from './charset.type';
+export * from './chunk-storage-policy.type';
 export * from './client-hint-header.type';
 export * from './client-options';
 export * from './content-encoder.type';

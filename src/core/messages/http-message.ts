@@ -28,6 +28,10 @@ export abstract class HTTPMessage {
         return this._bodyManager;
     }
 
+    public get length(): number {
+        return this.toBuffer().length;
+    }
+
     constructor(
         messageOrOptions?: Buffer | HTTPMessageOptions,
         encoding: BufferEncoding = "utf8"
