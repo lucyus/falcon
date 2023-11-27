@@ -2,7 +2,10 @@ import { WebSocketEndError, WebSocketFrameTypeError, WebSocketPayloadOverflowErr
 
 export class WebSocketMessenger {
 
-    public static decode(buffer: Buffer): string {
+    public static decode(
+        buffer: Buffer,
+        maxPayloadLength: number = 65535
+    ): { payload: string, isPayloadComplete: boolean } {
         const firstByte = buffer.readUInt8(0);
         const opCode = firstByte & 0xf;
         const isFinalFrame = opCode === 0x8;
@@ -21,19 +24,29 @@ export class WebSocketMessenger {
             currentOffset += 2;
         }
         else if (payloadLength === 127) {
-            throw new WebSocketPayloadOverflowError("WebSocketMessenger::decode: payload is too long.");
+            throw new WebSocketPayloadOverflowError("WebSocketMessenger::decode: cannot decode payload length because it is defined on 8 bytes (maximum integer is on 6 bytes).");
         }
-        const message = Buffer.alloc(payloadLength);
+        if (payloadLength > maxPayloadLength) {
+            throw new WebSocketPayloadOverflowError(`WebSocketMessenger::decode: payload length expected is too long (${payloadLength}). It exceeds the maximum payload length (${maxPayloadLength}).`);
+        }
         const isMasked = Boolean((secondByte >>> 7) & 0x1);
         let maskingKey: number | null = null;
         if (isMasked) {
             maskingKey = buffer.readUInt32BE(currentOffset);
             currentOffset += 4;
         }
+        const payloadLengthReceived = buffer.length - currentOffset;
+        if (payloadLengthReceived > payloadLength) {
+            throw new WebSocketPayloadOverflowError(`WebSocketMessenger::decode: payload received is too large (${payloadLengthReceived}). It exceeds the expected payload length (${payloadLength}).`);
+        }
+        if (payloadLengthReceived > maxPayloadLength) {
+            throw new WebSocketPayloadOverflowError(`WebSocketMessenger::decode: payload received is too large (${payloadLengthReceived}). It exceeds the maximum payload length (${maxPayloadLength}).`);
+        }
+        const message = Buffer.alloc(payloadLengthReceived);
         if (maskingKey !== null) {
             for (
                 let i = 0, j = 0;
-                i < payloadLength;
+                i < message.length;
                 ++i, j = i % 4
             ) {
                 const shift = j === 3 ? 0 : (3 - j) << 3;
@@ -45,7 +58,10 @@ export class WebSocketMessenger {
         else {
             buffer.copy(message, 0, currentOffset);
         }
-        return message.toString("utf-8");
+        return {
+            payload: message.toString("utf-8"),
+            isPayloadComplete: message.length === payloadLength
+        };
     }
 
     public static encode(message: string): Buffer {

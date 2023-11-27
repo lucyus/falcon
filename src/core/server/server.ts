@@ -20,7 +20,10 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
 
  export class Server {
 
-    protected _options: ServerOptions & { maxRequestLength: number };
+    protected _options: ServerOptions & {
+        maxRequestLength: number;
+        maxWebSocketPayloadLength: number;
+    };
     protected _server: TcpServer | TlsServer;
     protected _clientManager: ClientManager;
 
@@ -55,6 +58,7 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
             openSsl: options?.openSsl,
             onError: options?.onError,
             maxRequestLength: options?.maxRequestLength || (1024 * 1024 * 10),
+            maxWebSocketPayloadLength: options?.maxWebSocketPayloadLength || 65535
         };
         if (this._options.openSsl !== undefined) {
             this._server = createTlsServer({
@@ -113,9 +117,8 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                     ||
                     this._clientManager.register(socket)
                 ;
-                clientRequestChunksStorage.push(data);
                 const request = new HTTPRequest(
-                    Buffer.concat(clientRequestChunksStorage.chunks),
+                    Buffer.concat([...clientRequestChunksStorage.chunks, data]),
                     this._options.encoding?.server
                 );
                 if (request.length > this._options.maxRequestLength) {
@@ -136,16 +139,15 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                     );
                     return;
                 }
-                if (!clientRequestChunksStorage.policy) {
-                    if (request.headers.has("Content-Length")) {
-                        clientRequestChunksStorage.policy = "Content-Length";
-                    }
-                    else if (
-                        request.headers.has("Transfer-Encoding") &&
-                        request.headers.get("Transfer-Encoding")?.includes("chunked")
-                    ) {
-                        clientRequestChunksStorage.policy = "Transfer-Encoding";
-                    }
+                clientRequestChunksStorage.push(data);
+                if (request.headers.has("Content-Length")) {
+                    clientRequestChunksStorage.policy = "Content-Length";
+                }
+                else if (
+                    request.headers.has("Transfer-Encoding") &&
+                    request.headers.get("Transfer-Encoding")?.includes("chunked")
+                ) {
+                    clientRequestChunksStorage.policy = "Transfer-Encoding";
                 }
                 if (clientRequestChunksStorage.policy === "Content-Length") {
                     const expectedBodyLength = request.headers.get("Content-Length") || 0;
@@ -204,14 +206,29 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                 }
             }
             catch (httpParsingError: any) {
-                const clientRequestChunksStorage = this._clientManager.get(socket);
+                let clientRequestChunksStorage = this._clientManager.get(socket);
                 if (clientRequestChunksStorage) {
-                    clientRequestChunksStorage.clear();
+                    if (clientRequestChunksStorage.policy !== "WebSocket") {
+                        clientRequestChunksStorage.clear();
+                    }
+                }
+                else {
+                    clientRequestChunksStorage = this._clientManager.register(socket);
                 }
                 try {
-                    const requestMessage = WebSocketMessenger.decode(
-                        Buffer.from(data.toString("binary"), "binary")
+                    const {
+                        payload: requestMessage,
+                        isPayloadComplete
+                    } = WebSocketMessenger.decode(
+                        Buffer.concat([...clientRequestChunksStorage.chunks, data]),
+                        this._options.maxWebSocketPayloadLength
                     );
+                    if (!isPayloadComplete) {
+                        clientRequestChunksStorage.push(data);
+                        clientRequestChunksStorage.policy = "WebSocket";
+                        return;
+                    }
+                    clientRequestChunksStorage.clear();
                     const responseMessage = await this.webSocketRouter.handleMessage(
                         requestMessage,
                         socket
@@ -223,6 +240,7 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                     return;
                 }
                 catch (websocketParsingError: any) {
+                    clientRequestChunksStorage.clear();
                     if (websocketParsingError.name === "WebSocketEndError") {
                         const webSocketRoute = this.webSocketRouter.getRouteByClient(socket);
                         if (webSocketRoute !== undefined) {
@@ -264,6 +282,7 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                         return;
                     }
                 }
+                clientRequestChunksStorage.clear();
                 const internalServerErrorResponse = new HTTPResponse({
                     protocol: {
                         name: "HTTP",

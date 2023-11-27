@@ -1,4 +1,5 @@
 export type ChunkStoragePolicy =
     'Content-Length' |
-    'Transfer-Encoding'
+    'Transfer-Encoding' |
+    'WebSocket'
 ;
