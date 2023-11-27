@@ -21,8 +21,8 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
  export class Server {
 
     protected _options: ServerOptions & {
-        maxRequestLength: number;
-        maxWebSocketPayloadLength: number;
+        http: { maxRequestLength: number; };
+        webSocket: { maxPayloadLength: number; };
     };
     protected _server: TcpServer | TlsServer;
     protected _clientManager: ClientManager;
@@ -48,17 +48,23 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
 
     constructor(options?: ServerOptions) {
         this._clientManager = new ClientManager();
-        this._router = new Router(options?.router);
-        this._webSocketRouter = new WebSocketRouter(options?.webSocketRouter);
+        this._router = new Router(options?.http?.router);
+        this._webSocketRouter = new WebSocketRouter(options?.webSocket?.router);
         this._options = {
             host: options?.host,
             port: options?.port,
             timeout: options?.timeout,
-            encoding: options?.encoding,
+            http: {
+                encoding: options?.http?.encoding,
+                maxRequestLength: options?.http?.maxRequestLength || (1024 * 1024 * 10),
+                onError: options?.http?.onError,
+                router: options?.http?.router
+            },
+            webSocket: {
+                maxPayloadLength: options?.webSocket?.maxPayloadLength || 65535,
+                router: options?.webSocket?.router
+            },
             openSsl: options?.openSsl,
-            onError: options?.onError,
-            maxRequestLength: options?.maxRequestLength || (1024 * 1024 * 10),
-            maxWebSocketPayloadLength: options?.maxWebSocketPayloadLength || 65535
         };
         if (this._options.openSsl !== undefined) {
             this._server = createTlsServer({
@@ -119,9 +125,9 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                 ;
                 const request = new HTTPRequest(
                     Buffer.concat([...clientRequestChunksStorage.chunks, data]),
-                    this._options.encoding?.server
+                    this._options.http?.encoding?.server
                 );
-                if (request.length > this._options.maxRequestLength) {
+                if (request.length > this._options.http.maxRequestLength) {
                     clientRequestChunksStorage.clear();
                     const requestEntityTooLargeResponse = new HTTPResponse({
                         protocol: request.parsed.protocol,
@@ -221,7 +227,7 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
                         isPayloadComplete
                     } = WebSocketMessenger.decode(
                         Buffer.concat([...clientRequestChunksStorage.chunks, data]),
-                        this._options.maxWebSocketPayloadLength
+                        this._options.webSocket.maxPayloadLength
                     );
                     if (!isPayloadComplete) {
                         clientRequestChunksStorage.push(data);
@@ -335,7 +341,7 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
 
     protected async _send(response: HTTPResponse, destination: TcpSocket): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            const encoding: BufferEncoding = this._options.encoding?.client ?? "utf-8";
+            const encoding: BufferEncoding = this._options.http?.encoding?.client ?? "utf-8";
             destination.write(
                 response.toBuffer(),
                 encoding,
@@ -369,10 +375,10 @@ import { ServerMaximumRequestLengthExceededError } from "../../errors";
         response: HTTPResponse,
         socket: TcpSocket
     ) {
-        if (this._options.onError) {
+        if (this._options.http?.onError) {
             let errorResponseToSend: HTTPResponse = response;
             try {
-                errorResponseToSend = await this._options.onError(error, response, socket);
+                errorResponseToSend = await this._options.http.onError(error, response, socket);
                 if (!(errorResponseToSend instanceof HTTPResponse)) {
                     errorResponseToSend = response;
                 }

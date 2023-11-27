@@ -10,10 +10,6 @@ export type ServerOptions = {
     host?: string;
     port?: number;
     timeout?: number;
-    encoding?: {
-        client?: BufferEncoding;
-        server?: BufferEncoding;
-    };
     openSsl?: {
         enableClientCertificateAuthentication?: boolean;
         paths: {
@@ -21,14 +17,22 @@ export type ServerOptions = {
             serverCertificate: string;
             clientCertificateAuthority?: string;
         }
-    },
-    router?: RouterOptions;
-    webSocketRouter?: WebSocketRouterOptions;
-    onError?: (
-        error: Error,
-        response: HTTPResponse,
-        socket: TcpSocket
-    ) => HTTPResponse | Promise<HTTPResponse>;
-    maxRequestLength?: number;
-    maxWebSocketPayloadLength?: number;
+    };
+    http?: {
+        encoding?: {
+            client?: BufferEncoding;
+            server?: BufferEncoding;
+        };
+        maxRequestLength?: number;
+        onError?: (
+            error: Error,
+            response: HTTPResponse,
+            socket: TcpSocket
+        ) => HTTPResponse | Promise<HTTPResponse>;
+        router?: RouterOptions;
+    };
+    webSocket?: {
+        maxPayloadLength?: number;
+        router?: WebSocketRouterOptions;
+    };
 };
